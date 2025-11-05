@@ -1,0 +1,897 @@
+@startuml Patron_Singleton_Registry
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+
+title Patrón SINGLETON - CatalogoServiceRegistry
+
+class CatalogoServiceRegistry << (S,orchid) Singleton >> {
+    {static} -_instance : CatalogoServiceRegistry
+    {static} -_lock : Lock
+    -_producto_service : ProductoService
+    -_vendedor_service : VendedorService
+    -_categoria_service : CategoriaService
+    -_orden_service : OrdenService
+    -_mostrar_datos_handlers : dict<Type, Callable>
+    -_calcular_precio_handlers : dict<Type, Callable>
+    ====
+    {static} +__new__(cls) : CatalogoServiceRegistry
+    {static} +get_instance() : CatalogoServiceRegistry
+    -_inicializar_servicios() : void
+    ====
+    +mostrar_datos(item : CatalogoItem) : void
+    +calcular_precio(item : Producto, usuario : Usuario) : float
+    ====
+    -_mostrar_datos_producto(producto : Producto) : void
+    -_mostrar_datos_vendedor(vendedor : Vendedor) : void
+    -_mostrar_datos_categoria(categoria : Categoria) : void
+    -_mostrar_datos_orden(orden : Orden) : void
+    ====
+    -_calcular_precio_con_descuento(producto : Producto, usuario : Usuario) : float
+}
+
+note right of CatalogoServiceRegistry
+    SINGLETON PATTERN
+    
+    Propósito:
+    * Garantizar una única instancia global
+    * Compartir estado entre servicios
+    * Centralizar lógica de negocio
+    
+    Implementación:
+    * Thread-safe con threading.Lock
+    * Double-checked locking
+    * Lazy initialization
+    * Control con __new__
+    
+    Uso:
+    registry = CatalogoServiceRegistry()
+    o
+    registry = CatalogoServiceRegistry.get_instance()
+    
+    Ambos retornan la MISMA instancia
+end note
+
+note as N1
+    Diccionarios de Handlers (Registry Pattern)
+    
+    _mostrar_datos_handlers = {
+        Producto: self._mostrar_datos_producto,
+        Vendedor: self._mostrar_datos_vendedor,
+        Categoria: self._mostrar_datos_categoria,
+        Orden: self._mostrar_datos_orden
+    }
+    
+    _calcular_precio_handlers = {
+        Producto: self._calcular_precio_con_descuento,
+        Bundle: self._calcular_precio_bundle
+    }
+    
+    Dispatch polimórfico sin isinstance()
+    Complejidad O(1) para lookup
+end note
+
+@enduml
+
+@startuml Patron_Factory_Membresias
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+
+title Patrón FACTORY METHOD - MembresiaFactory
+
+package "<<Factory>>" #Orange {
+    class MembresiaFactory <<static>> {
+        {static} +crear_membresia(tipo : str) : Membresia
+        ====
+        {static} -_crear_basic() : MembresiaBasic
+        {static} -_crear_prime() : MembresiaPrime
+        {static} -_crear_premium() : MembresiaPremium
+    }
+}
+
+package "<<Entities>>" #LightGreen {
+    abstract class Membresia {
+        #_precio : float
+        #_envio_gratis : bool
+        #_descuento : float
+        #_ofertas_anticipadas : bool
+        #_soporte_prioritario : bool
+        ====
+        +get_precio() : float
+        +tiene_envio_gratis() : bool
+        +get_descuento() : float
+        +tiene_ofertas_anticipadas() : bool
+        +tiene_soporte_prioritario() : bool
+    }
+    
+    class MembresiaBasic {
+        -_costo_envio_base : float
+        ====
+        +__init__()
+        +calcular_costo_envio(peso : float) : float
+    }
+    
+    class MembresiaPrime {
+        -_acceso_anticipado_horas : int
+        ====
+        +__init__()
+        +get_acceso_anticipado() : int
+    }
+    
+    class MembresiaPremium {
+        -_soporte_24_7 : bool
+        -_descuento_adicional : float
+        ====
+        +__init__()
+        +tiene_soporte_24_7() : bool
+        +get_descuento_adicional() : float
+    }
+}
+
+MembresiaFactory ..> Membresia : <<creates>>
+MembresiaFactory ..> MembresiaBasic : <<creates>>
+MembresiaFactory ..> MembresiaPrime : <<creates>>
+MembresiaFactory ..> MembresiaPremium : <<creates>>
+
+Membresia <|-- MembresiaBasic
+Membresia <|-- MembresiaPrime
+Membresia <|-- MembresiaPremium
+
+note right of MembresiaFactory
+    FACTORY METHOD PATTERN
+    
+    Propósito:
+    * Encapsular creación de membresías
+    * Desacoplar cliente de clases concretas
+    * Centralizar lógica de instanciación
+    
+    Implementación:
+    * Diccionario de factories
+    * Métodos estáticos dedicados
+    * Retorna tipo base abstracto
+    
+    Uso:
+    membresia = MembresiaFactory.crear_membresia("Prime")
+    Retorna Membresia (no MembresiaPrime concreto)
+    
+    Ventajas:
+    * Cliente no conoce tipos concretos
+    * Fácil agregar nuevas membresías
+    * Validación centralizada
+end note
+
+note as N1
+    Diccionario de Factories
+    
+    factories = {
+        "Basic": MembresiaFactory._crear_basic,
+        "Prime": MembresiaFactory._crear_prime,
+        "Premium": MembresiaFactory._crear_premium
+    }
+    
+    if tipo not in factories:
+        raise ValueError(f"Membresía desconocida: {tipo}")
+    
+    return factories[tipo]()
+end note
+
+note top of MembresiaBasic
+    Membresía Básica:
+    * Precio: $0
+    * Envío gratis: No
+    * Descuento: 0%
+    * Ofertas: No
+    * Soporte: Estándar
+end note
+
+note top of MembresiaPrime
+    Membresía Prime:
+    * Precio: $999
+    * Envío gratis: Sí
+    * Descuento: 5%
+    * Ofertas: 24h antes
+    * Soporte: Estándar
+end note
+
+note top of MembresiaPremium
+    Membresía Premium:
+    * Precio: $1999
+    * Envío gratis: Sí (prioritario)
+    * Descuento: 15%
+    * Ofertas: 48h antes
+    * Soporte: Prioritario 24/7
+end note
+
+@enduml
+
+@startuml Patron_Strategy_Descuento
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+
+title Patrón STRATEGY - Estrategias de Descuento
+
+package "<<Strategy Interface>>" #LightPink {
+    interface DescuentoStrategy {
+        +calcular_precio_final(precio_base : float) : float
+        +get_porcentaje_descuento() : float
+        +aplicar_descuento_adicional(precio : float, porcentaje : float) : float
+    }
+}
+
+package "<<Concrete Strategies>>" #LightCyan {
+    class DescuentoBasicStrategy {
+        +calcular_precio_final(precio_base : float) : float
+        +get_porcentaje_descuento() : float
+        +aplicar_descuento_adicional(precio : float, porcentaje : float) : float
+    }
+    
+    class DescuentoPrimeStrategy {
+        -_descuento_base : float
+        +calcular_precio_final(precio_base : float) : float
+        +get_porcentaje_descuento() : float
+        +aplicar_descuento_adicional(precio : float, porcentaje : float) : float
+    }
+    
+    class DescuentoPremiumStrategy {
+        -_descuento_base : float
+        -_descuento_adicional_compras : float
+        +calcular_precio_final(precio_base : float) : float
+        +get_porcentaje_descuento() : float
+        +aplicar_descuento_adicional(precio : float, porcentaje : float) : float
+    }
+}
+
+package "<<Strategy Context>>" #LightYellow {
+    class PrecioService {
+        #_estrategia_descuento : DescuentoStrategy
+        ====
+        +__init__(estrategia : DescuentoStrategy)
+        +calcular_precio_final(producto : Producto, usuario : Usuario) : float
+        +cambiar_estrategia(estrategia : DescuentoStrategy) : void
+    }
+}
+
+package "<<Entities>>" #LightGreen {
+    class Producto {
+        -_nombre : str
+        -_precio : float
+        -_vendedor : Vendedor
+        -_stock : int
+        ====
+        +get_precio() : float
+        +get_stock() : int
+        +reducir_stock(cantidad : int) : void
+    }
+    
+    class Usuario {
+        -_username : str
+        -_membresia : Membresia
+        ====
+        +get_membresia() : Membresia
+    }
+}
+
+DescuentoStrategy <|.. DescuentoBasicStrategy
+DescuentoStrategy <|.. DescuentoPrimeStrategy
+DescuentoStrategy <|.. DescuentoPremiumStrategy
+
+PrecioService o-- DescuentoStrategy : usa
+PrecioService --> Producto : calcula precio
+PrecioService --> Usuario : verifica membresía
+
+note right of DescuentoStrategy
+    STRATEGY PATTERN
+    
+    Propósito:
+    * Algoritmos intercambiables de descuento
+    * Inyección de dependencias
+    * Diferentes estrategias por membresía
+    
+    Descuento Basic:
+    - Porcentaje: 0%
+    - Precio final = Precio base
+    - Sin beneficios adicionales
+    
+    Descuento Prime:
+    - Porcentaje: 5%
+    - Precio final = Precio base * 0.95
+    - Descuentos en ofertas especiales
+    
+    Descuento Premium:
+    - Porcentaje: 15%
+    - Precio final = Precio base * 0.85
+    - Descuentos acumulativos
+    - Beneficios en compras grandes
+end note
+
+note left of PrecioService
+    Strategy Context
+    
+    Delega el cálculo de precio
+    a la estrategia inyectada:
+    
+    def calcular_precio_final(self, producto, usuario):
+        membresia = usuario.get_membresia()
+        estrategia = self._seleccionar_estrategia(membresia)
+        precio_base = producto.get_precio()
+        return estrategia.calcular_precio_final(precio_base)
+end note
+
+@enduml
+
+@startuml Patron_State_Orden
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+
+title Patrón STATE - Estados de la Orden
+
+package "<<State Interface>>" #LightPink {
+    interface EstadoOrden {
+        +handle_procesar(orden : Orden) : void
+        +handle_enviar(orden : Orden) : void
+        +handle_entregar(orden : Orden) : void
+        +handle_cancelar(orden : Orden) : void
+        +get_nombre_estado() : str
+    }
+}
+
+package "<<Concrete States>>" #LightCyan {
+    class EstadoPendiente {
+        +handle_procesar(orden : Orden) : void
+        +handle_enviar(orden : Orden) : void
+        +handle_entregar(orden : Orden) : void
+        +handle_cancelar(orden : Orden) : void
+        +get_nombre_estado() : str
+    }
+    
+    class EstadoProcesando {
+        +handle_procesar(orden : Orden) : void
+        +handle_enviar(orden : Orden) : void
+        +handle_entregar(orden : Orden) : void
+        +handle_cancelar(orden : Orden) : void
+        +get_nombre_estado() : str
+    }
+    
+    class EstadoEnviado {
+        +handle_procesar(orden : Orden) : void
+        +handle_enviar(orden : Orden) : void
+        +handle_entregar(orden : Orden) : void
+        +handle_cancelar(orden : Orden) : void
+        +get_nombre_estado() : str
+    }
+    
+    class EstadoEntregado {
+        +handle_procesar(orden : Orden) : void
+        +handle_enviar(orden : Orden) : void
+        +handle_entregar(orden : Orden) : void
+        +handle_cancelar(orden : Orden) : void
+        +get_nombre_estado() : str
+    }
+    
+    class EstadoCancelado {
+        +handle_procesar(orden : Orden) : void
+        +handle_enviar(orden : Orden) : void
+        +handle_entregar(orden : Orden) : void
+        +handle_cancelar(orden : Orden) : void
+        +get_nombre_estado() : str
+    }
+}
+
+package "<<Context>>" #LightYellow {
+    class Orden {
+        -_numero_orden : str
+        -_estado_actual : EstadoOrden
+        -_usuario : Usuario
+        -_items : List<ItemOrden>
+        -_total : float
+        -_fecha_creacion : datetime
+        -_fecha_entrega_estimada : datetime
+        ====
+        +__init__()
+        +procesar() : void
+        +enviar() : void
+        +entregar() : void
+        +cancelar() : void
+        +set_estado(estado : EstadoOrden) : void
+        +get_estado() : EstadoOrden
+    }
+}
+
+EstadoOrden <|.. EstadoPendiente
+EstadoOrden <|.. EstadoProcesando
+EstadoOrden <|.. EstadoEnviado
+EstadoOrden <|.. EstadoEntregado
+EstadoOrden <|.. EstadoCancelado
+
+Orden o-- EstadoOrden : estado actual
+
+EstadoPendiente -right-> EstadoProcesando : procesar()
+EstadoProcesando -right-> EstadoEnviado : enviar()
+EstadoEnviado -right-> EstadoEntregado : entregar()
+EstadoPendiente -down-> EstadoCancelado : cancelar()
+EstadoProcesando -down-> EstadoCancelado : cancelar()
+
+note right of EstadoOrden
+    STATE PATTERN
+    
+    Propósito:
+    * Comportamiento cambia según estado
+    * Evitar condicionales complejos
+    * Transiciones controladas
+    
+    Estados posibles:
+    * Pendiente: Esperando procesamiento
+    * Procesando: Preparando orden
+    * Enviado: En tránsito
+    * Entregado: Completada
+    * Cancelado: Orden cancelada
+    
+    Transiciones:
+    Pendiente -> procesar() -> Procesando
+    Procesando -> enviar() -> Enviado
+    Enviado -> entregar() -> Entregado
+    Pendiente/Procesando -> cancelar() -> Cancelado
+end note
+
+note left of EstadoPendiente
+    Estado Pendiente:
+    
+    * procesar(): Verifica pago, cambia a Procesando
+    * enviar(): No permitido
+    * entregar(): No permitido
+    * cancelar(): Reembolsa, cambia a Cancelado
+end note
+
+note left of EstadoProcesando
+    Estado Procesando:
+    
+    * procesar(): Ya está procesando
+    * enviar(): Genera guía, cambia a Enviado
+    * entregar(): No permitido
+    * cancelar(): Reembolsa, cambia a Cancelado
+end note
+
+note left of EstadoEnviado
+    Estado Enviado:
+    
+    * procesar(): No permitido
+    * enviar(): Ya está enviado
+    * entregar(): Confirma entrega, cambia a Entregado
+    * cancelar(): No permitido (ya despachado)
+end note
+
+note left of EstadoEntregado
+    Estado Entregado:
+    
+    * procesar(): No permitido
+    * enviar(): No permitido
+    * entregar(): Ya está entregado
+    * cancelar(): No permitido (orden completada)
+end note
+
+@enduml
+
+@startuml Patron_Observer_Eventos_Orden
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+
+title Patrón OBSERVER - Sistema de Notificaciones de Órdenes
+
+package "<<Pattern Interfaces>>" #Pink {
+    interface "Observer<T>" as Observer {
+        +actualizar(evento : T) : void
+    }
+    
+    abstract class "Observable<T>" as Observable {
+        #_observadores : List<Observer<T>>
+        ====
+        +agregar_observador(obs : Observer<T>) : void
+        +eliminar_observador(obs : Observer<T>) : void
+        #notificar_observadores(evento : T) : void
+    }
+}
+
+package "<<Subject - Observable>>" #LightCyan {
+    class Orden {
+        -_estado : EstadoOrden
+        -_numero_orden : str
+        -_usuario : Usuario
+        ====
+        +procesar() : void
+        +enviar() : void
+        +entregar() : void
+        +cancelar() : void
+        -_notificar_orden_creada() : void
+        -_notificar_orden_procesando() : void
+        -_notificar_orden_enviada() : void
+        -_notificar_orden_entregada() : void
+        -_notificar_orden_cancelada() : void
+    }
+}
+
+package "<<Observers Concretos>>" #LightYellow {
+    class EmailObserver {
+        +actualizar(evento : EventoOrden) : void
+        -_enviar_email_confirmacion() : void
+        -_enviar_email_envio() : void
+        -_enviar_email_entrega() : void
+    }
+    
+    class SMSObserver {
+        +actualizar(evento : EventoOrden) : void
+        -_enviar_sms_notificacion() : void
+    }
+    
+    class PushNotificationObserver {
+        +actualizar(evento : EventoOrden) : void
+        -_enviar_push() : void
+    }
+    
+    class AnalyticsObserver {
+        +actualizar(evento : EventoOrden) : void
+        -_registrar_evento() : void
+        -_actualizar_metricas() : void
+    }
+    
+    class InventarioObserver {
+        +actualizar(evento : EventoOrden) : void
+        -_actualizar_stock() : void
+        -_reservar_productos() : void
+    }
+}
+
+package "<<Event Data>>" #LightGreen {
+    class EventoOrden {
+        +tipo : TipoEvento
+        +orden : Orden
+        +usuario : Usuario
+        +timestamp : datetime
+    }
+    
+    enum TipoEvento {
+        ORDEN_CREADA
+        ORDEN_PROCESANDO
+        ORDEN_ENVIADA
+        ORDEN_ENTREGADA
+        ORDEN_CANCELADA
+        PAGO_APROBADO
+        PAGO_RECHAZADO
+    }
+}
+
+Observable <|-- Orden
+Observer <|.. EmailObserver
+Observer <|.. SMSObserver
+Observer <|.. PushNotificationObserver
+Observer <|.. AnalyticsObserver
+Observer <|.. InventarioObserver
+
+Orden "1" --> "0..*" Observer : notifica a >
+Orden --> EventoOrden : genera
+
+note right of Observable
+    OBSERVER PATTERN
+    
+    Propósito:
+    * Notificación automática de eventos
+    * Desacoplamiento orden-observadores
+    * Arquitectura event-driven
+    
+    Implementación:
+    * Generic type-safe: Observable<T>
+    * Thread-safe con listas protegidas
+    * Push-based notification
+    
+    Flujo:
+    1. Orden cambia de estado
+    2. notificar_observadores(evento)
+    3. Cada Observer.actualizar(evento)
+    4. Observadores procesan según tipo
+end note
+
+note left of EmailObserver
+    Observer de Email:
+    
+    * Envía confirmación de orden
+    * Notifica cuando se procesa
+    * Avisa cuando se envía
+    * Confirma entrega
+    * Informa cancelaciones
+end note
+
+note left of SMSObserver
+    Observer de SMS:
+    
+    * Mensajes cortos
+    * Notificaciones críticas
+    * Estados importantes
+    * Confirmaciones rápidas
+end note
+
+note left of PushNotificationObserver
+    Observer de Push:
+    
+    * Notificaciones móvil
+    * Actualizaciones en tiempo real
+    * Clickable para ver detalles
+    * Badge counts
+end note
+
+note left of AnalyticsObserver
+    Observer de Analytics:
+    
+    * Registra eventos
+    * Métricas de conversión
+    * Tiempo de procesamiento
+    * Tasas de cancelación
+    * Análisis de patrones
+end note
+
+note left of InventarioObserver
+    Observer de Inventario:
+    
+    * Actualiza stock automáticamente
+    * Reserva productos
+    * Libera stock si se cancela
+    * Alertas de stock bajo
+end note
+
+@enduml
+
+@startuml Patron_Iterator_Carrito
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+
+title Patrón ITERATOR - Carrito de Compras
+
+package "<<Iterator Interface>>" #LightPink {
+    interface Iterator {
+        +has_next() : bool
+        +has_previous() : bool
+        +next() : ItemCarrito
+        +previous() : ItemCarrito
+        +current() : ItemCarrito
+        +reset() : void
+    }
+}
+
+package "<<Aggregate Interface>>" #LightPink {
+    interface IterableCollection {
+        +create_iterator() : Iterator
+    }
+}
+
+package "<<Concrete Iterator>>" #LightCyan {
+    class CarritoIterator {
+        -_carrito : Carrito
+        -_indice_actual : int
+        ====
+        +__init__(carrito : Carrito)
+        +has_next() : bool
+        +has_previous() : bool
+        +next() : ItemCarrito
+        +previous() : ItemCarrito
+        +current() : ItemCarrito
+        +reset() : void
+    }
+}
+
+package "<<Concrete Aggregate>>" #LightYellow {
+    class Carrito {
+        -_items : List<ItemCarrito>
+        -_usuario : Usuario
+        ====
+        +__init__(usuario : Usuario)
+        +agregar_producto(producto : Producto, cantidad : int) : void
+        +actualizar_cantidad(producto : Producto, cantidad : int) : void
+        +eliminar_producto(producto : Producto) : void
+        +limpiar() : void
+        +calcular_subtotal() : float
+        +calcular_total() : float
+        +aplicar_descuento(usuario : Usuario) : float
+        +create_iterator() : Iterator
+        +get_items() : List<ItemCarrito>
+        +get_cantidad_items() : int
+    }
+    
+    class ItemCarrito {
+        -_producto : Producto
+        -_cantidad : int
+        ====
+        +get_producto() : Producto
+        +get_cantidad() : int
+        +set_cantidad(cantidad : int) : void
+        +calcular_subtotal() : float
+    }
+}
+
+package "<<Entities>>" #LightGreen {
+    class Producto {
+        -_id : int
+        -_nombre : str
+        -_precio : float
+        -_stock : int
+        ====
+        +get_nombre() : str
+        +get_precio() : float
+        +get_stock() : int
+    }
+}
+
+Iterator <|.. CarritoIterator
+IterableCollection <|.. Carrito
+
+CarritoIterator --> Carrito : itera sobre
+Carrito o-- ItemCarrito : contiene
+ItemCarrito --> Producto : referencia
+
+note right of Iterator
+    ITERATOR PATTERN
+    
+    Propósito:
+    * Acceso secuencial a colección
+    * Ocultar estructura interna
+    * Múltiples iteradores simultáneos
+    
+    Operaciones:
+    * next(): Avanzar a siguiente item
+    * previous(): Retroceder a item anterior
+    * current(): Obtener item actual
+    * has_next(): Verificar si hay siguiente
+    * has_previous(): Verificar si hay anterior
+    * reset(): Volver al inicio
+end note
+
+note left of Carrito
+    Carrito de Compras
+    
+    Funcionalidades:
+    
+    * Agregar productos con cantidad
+    * Actualizar cantidades
+    * Eliminar productos
+    * Calcular subtotales por item
+    * Calcular total del carrito
+    * Aplicar descuentos por membresía
+    * Verificar stock disponible
+    * Limpiar carrito después de compra
+    
+    Validaciones:
+    * Stock suficiente al agregar
+    * Cantidad > 0
+    * Producto no duplicado (actualiza cantidad)
+end note
+
+note left of ItemCarrito
+    Item del Carrito
+    
+    Representa un producto
+    en el carrito con su cantidad:
+    
+    * Producto: Referencia al producto
+    * Cantidad: Unidades a comprar
+    * Subtotal: Precio * Cantidad
+    
+    El subtotal se calcula dinámicamente
+    para reflejar cambios de precio.
+end note
+
+@enduml
+
+@startuml Integracion_Todos_Patrones
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+
+title Integración de Todos los Patrones de Diseño - E-Commerce
+
+package "Cliente" #LightBlue {
+    class Main {
+        +main() : void
+    }
+}
+
+package "Singleton + Registry" #LightYellow {
+    class CatalogoServiceRegistry {
+        {static} +get_instance() : CatalogoServiceRegistry
+        +mostrar_datos(item) : void
+        +calcular_precio(producto, usuario) : float
+    }
+}
+
+package "Factory Method" #Orange {
+    class MembresiaFactory {
+        {static} +crear_membresia(tipo) : Membresia
+    }
+}
+
+package "Strategy" #LightPink {
+    interface DescuentoStrategy {
+        +calcular_precio_final(precio) : float
+    }
+    
+    interface EnvioStrategy {
+        +calcular_costo_envio(peso, distancia) : float
+    }
+}
+
+package "State" #LightCyan {
+    class Orden {
+        -_estado : EstadoOrden
+        +procesar() : void
+        +enviar() : void
+        +entregar() : void
+        +cancelar() : void
+    }
+    
+    interface EstadoOrden {
+        +handle_procesar() : void
+        +handle_enviar() : void
+        +handle_entregar() : void
+    }
+}
+
+package "Observer" #LightGreen {
+    interface Observer {
+        +actualizar(evento) : void
+    }
+    
+    class EmailObserver
+    class SMSObserver
+    class AnalyticsObserver
+    class InventarioObserver
+}
+
+package "Iterator" #LightSalmon {
+    class Carrito {
+        +agregar_producto() : void
+        +calcular_total() : float
+        +create_iterator() : Iterator
+    }
+}
+
+Main --> MembresiaFactory : usa
+Main --> CatalogoServiceRegistry : usa
+Main --> Orden : crea
+
+CatalogoServiceRegistry --> DescuentoStrategy : usa
+CatalogoServiceRegistry --> EnvioStrategy : usa
+
+Orden o-- EstadoOrden : estado actual
+Orden --> Observer : notifica
+Orden --> Carrito : procesa
+
+Observer <|.. EmailObserver
+Observer <|.. SMSObserver
+Observer <|.. AnalyticsObserver
+Observer <|.. InventarioObserver
+
+note as N1
+    INTEGRACIÓN DE PATRONES
+    
+    Orquestación de 6 patrones:
+    
+    1. Singleton: Única instancia de Registry
+    2. Factory: Crea membresías
+    3. Strategy: Descuentos y envíos
+    4. State: Estados de la orden
+    5. Observer: Notificaciones de eventos
+    6. Iterator: Navegación en carrito
+    
+    Todos trabajan juntos para crear
+    un sistema flexible, extensible
+    y mantenible similar a Amazon/MercadoLibre.
+end note
+
+note as N2
+    Flujo completo de compra:
+    
+    1. Main crea usuario con Factory (Membresía)
+    2. Main obtiene Registry (Singleton)
+    3. Usuario agrega productos al Carrito (Iterator)
+    4. Registry calcula precio con Strategy (Descuento)
+    5. Usuario procesa compra, crea Orden
+    6. Orden cambia State (Procesando → Enviado → Entregado)
+    7. Orden notifica Observers (Email, SMS, Analytics, Inventario)
+    8. Strategy calcula costo de envío según membresía
+end note
+
+@enduml

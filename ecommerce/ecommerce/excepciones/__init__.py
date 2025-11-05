@@ -1,0 +1,8 @@
+"""Paquete de excepciones personalizadas del e-commerce."""
+from .ecommerce_exception import EcommerceException
+from .usuario_existente_exception import UsuarioExistenteException
+from .stock_insuficiente_exception import StockInsuficienteException
+from .carrito_vacio_exception import CarritoVacioException
+from .pago_rechazado_exception import PagoRechazadoException
+from .persistencia_exception import PersistenciaException
+from .operacion_no_permitida_exception import OperacionNoPermitidaException
